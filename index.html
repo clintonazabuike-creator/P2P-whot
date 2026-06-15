@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Whot P2P - Azabuike Technologies Inc.</title>
+    
+    <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+
+    <style>
+        :root {
+            --bg-color: #0f172a;
+            --card-bg: #1e293b;
+            --accent-color: #3b82f6;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --success: #22c55e;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: system-ui, -apple-system, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+
+        header {
+            background-color: rgba(30, 41, 59, 0.7);
+            padding: 1.5rem;
+            text-align: center;
+            border-bottom: 1px solid #334155;
+            backdrop-filter: blur(8px);
+        }
+
+        header h1 {
+            margin: 0;
+            font-size: 1.8rem;
+            letter-spacing: 0.05em;
+        }
+
+        header span {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.15em;
+        }
+
+        main {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem;
+            gap: 2rem;
+        }
+
+        .lobby-panel {
+            background-color: var(--card-bg);
+            padding: 2rem;
+            border-radius: 12px;
+            border: 1px solid #334155;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
+            max-width: 400px;
+            width: 100%;
+            text-align: center;
+        }
+
+        .input-group {
+            margin: 1.5rem 0;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        input {
+            background-color: var(--bg-color);
+            border: 1px solid #475569;
+            padding: 0.75rem;
+            border-radius: 6px;
+            color: var(--text-main);
+            font-size: 1rem;
+            text-align: center;
+        }
+
+        button {
+            background-color: var(--accent-color);
+            color: white;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            font-size: 1rem;
+            font-weight: 600;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: opacity 0.2s ease;
+            width: 100%;
+            margin-bottom: 0.7rem;
+        }
+
+        button:hover {
+            opacity: 0.9;
+        }
+
+        button.secondary {
+            background-color: transparent;
+            border: 1px solid #475569;
+            color: var(--text-main);
+        }
+
+        /* Console Output Viewport */
+        .terminal-log {
+            width: 100%;
+            max-width: 600px;
+            background-color: #020617;
+            border: 1px solid #1e293b;
+            font-family: monospace;
+            padding: 1rem;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            color: var(--success);
+            height: 150px;
+            overflow-y: auto;
+            text-align: left;
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>WHOT P2P</h1>
+        <span>Azabuike Technologies Inc.</span>
+    </header>
+
+    <main>
+        <div class="lobby-panel" id="lobbyUi">
+            <h3>Game Room Control</h3>
+            <p style="color: var(--text-muted); font-size: 0.9rem;">Create a session as host or insert a peer room code to join an active match.</p>
+            
+            <hr style="border-color: #334155; margin: 1.5rem 0;">
+
+            <button id="btnCreate">Create Host Room</button>
+            
+            <div class="input-group">
+                <input type="text" id="roomCodeInput" placeholder="Enter Room Code">
+                <button id="btnJoin" class="secondary">Join Room</button>
+            </div>
+
+            <button id="btnStart" style="display: none; background-color: var(--success);">Start Match</button>
+        </div>
+
+        <div class="terminal-log" id="terminalLog">
+            [System Engine Initialized] Ready for network deployment...
+        </div>
+    </main>
+
+    <script type="module">
+        import { actionCreateRoom, actionJoinRoom, actionStartMatch } from './src/app.js';
+
+        const logger = document.getElementById('terminalLog');
+        
+        // Override global console logging context to stream feedback directly onto the interface window
+        const oldLog = console.log;
+        console.log = function (message, ...args) {
+            oldLog(message, ...args);
+            const cleanMessage = typeof message === 'object' ? JSON.stringify(message) : message;
+            logger.innerHTML += `<br>> ${cleanMessage}`;
+            logger.scrollTop = logger.scrollHeight;
+        };
+
+        const oldWarn = console.warn;
+        console.warn = function (message, ...args) {
+            oldWarn(message, ...args);
+            logger.innerHTML += `<br><span style="color: #eab308">> WARN: ${message}</span>`;
+            logger.scrollTop = logger.scrollHeight;
+        };
+
+        // Wire Interface Actions to Orchestration Stack
+        document.getElementById('btnCreate').addEventListener('click', async () => {
+            document.getElementById('btnCreate').disabled = true;
+            await actionCreateRoom();
+            document.getElementById('btnStart').style.display = 'block';
+        });
+
+        document.getElementById('btnJoin').addEventListener('click', () => {
+            const code = document.getElementById('roomCodeInput').value.trim();
+            if (code) {
+                actionJoinRoom(code);
+                document.getElementById('btnJoin').disabled = true;
+            } else {
+                alert("Please paste a valid host room code.");
+            }
+        });
+
+        document.getElementById('btnStart').addEventListener('click', () => {
+            actionStartMatch();
+            document.getElementById('btnStart').style.display = 'none';
+        });
+    </script>
+</body>
+</html>
+
