@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Whot P2P - Azabuike Technologies Inc.</title>
+    <title>Whot P2P by Azabuike Technologies Inc.</title>
     <style>
         :root {
             --bg-main: #0f172a;
@@ -18,60 +18,33 @@
             --card-square: #3b82f6;
             --card-whot: #f43f5e;
         }
-
-        * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
-        body { background: var(--bg-main); color: var(--text-main); min-height: 100vh; padding: 15px; }
-        header { text-align: center; margin-bottom: 25px; padding-bottom: 10px; border-bottom: 1px solid #334155; }
-        header h1 { font-size: 1.8rem; color: #38bdf8; }
-        header span { font-size: 0.85rem; opacity: 0.7; letter-spacing: 1px; }
-
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: system-ui, -apple-system, sans-serif; }
+        body { background: var(--bg-main); color: var(--text-main); min-height: 100vh; padding: 15px; display: flex; flex-direction: column; }
+        header { text-align: center; margin-bottom: 20px; padding-bottom: 10px; border-bottom: 1px solid #334155; }
+        header h1 { font-size: 1.6rem; color: #38bdf8; }
+        header span { font-size: 0.8rem; opacity: 0.7; letter-spacing: 1px; }
         .hidden { display: none !important; }
         .panel { background: var(--surface); border-radius: 12px; padding: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.3); margin-bottom: 20px; }
-        
-        /* Lobby Configuration Styles */
-        .lobby-grid { display: grid; grid-template-columns: 1fr; gap: 20px; max-width: 600px; margin: 0 auto; }
+        .lobby-grid { display: grid; grid-template-columns: 1fr; gap: 20px; max-width: 500px; margin: 0 auto; width: 100%; }
         button { background: var(--accent); color: white; border: none; padding: 12px 20px; border-radius: 6px; cursor: pointer; font-weight: bold; width: 100%; font-size: 1rem; transition: background 0.2s; }
         button:hover { background: var(--accent-hover); }
-        .input-group { display: flex; gap: 10px; margin-top: 8px; }
-        input { flex: 1; padding: 10px; border-radius: 6px; border: 1px solid #475569; background: #0f172a; color: white; font-size: 1rem; }
-        #qr-code-container { display: flex; justify-content: center; margin: 15px 0; }
-        #camera-reader-view { width: 100%; max-width: 300px; margin: 10px auto; border-radius: 8px; overflow: hidden; }
-
-        /* Game Arena Layout Matrix */
-        .arena-grid { display: grid; grid-template-rows: auto 1fr auto; gap: 20px; max-width: 1000px; margin: 0 auto; }
-        .hand-container { display: flex; gap: 10px; overflow-x: auto; padding: 10px 0; min-height: 140px; border-radius: 8px; background: rgba(0,0,0,0.2); justify-content: center; align-items: center; }
-        
-        /* Card Aesthetics Generation */
-        .card-face { width: 85px; height: 125px; border-radius: 8px; display: flex; flex-direction: column; justify-content: space-between; padding: 10px; font-weight: bold; font-size: 1.1rem; cursor: pointer; user-select: none; flex-shrink: 0; color: white; position: relative; box-shadow: 0 4px 6px rgba(0,0,0,0.2); }
-        .card-face.playable { border: 3px solid #ffff; transform: translateY(-5px); }
+        .arena-grid { display: grid; grid-template-rows: auto 1fr auto; gap: 20px; max-width: 800px; margin: 0 auto; width: 100%; flex: 1; }
+        .hand-container { display: flex; gap: 10px; overflow-x: auto; padding: 10px; min-height: 130px; border-radius: 8px; background: rgba(0,0,0,0.2); justify-content: center; align-items: center; }
+        .card-face { width: 80px; height: 115px; border-radius: 8px; display: flex; flex-direction: column; justify-content: space-between; padding: 10px; font-weight: bold; font-size: 1rem; cursor: pointer; user-select: none; flex-shrink: 0; color: white; box-shadow: 0 4px 6px rgba(0,0,0,0.2); }
+        .card-face.playable { border: 3px solid #ffff; transform: translateY(-4px); }
         .card-face.card-back { background: #475569; border: 2px solid #64748b; justify-content: center; align-items: center; cursor: not-allowed; }
-        
         .shape-circle { background: var(--card-circle); }
         .shape-cross { background: var(--card-cross); }
         .shape-triangle { background: var(--card-triangle); }
         .shape-star { background: var(--card-star); }
         .shape-square { background: var(--card-square); }
         .shape-whot { background: var(--card-whot); animation: pulse 2s infinite; }
-
-        @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(244,63,94,0.7); } 70% { box-shadow: 0 0 0 10px rgba(244,63,94,0); } 100% { box-shadow: 0 0 0 0 rgba(244,63,94,0); } }
-
-        .center-deck-hub { display: flex; justify-content: center; align-items: center; gap: 40px; margin: 20px 0; }
-        .interactive-deck { animation: bounce 1.5s infinite alternate; }
-        @keyframes bounce { from { transform: translateY(0); } to { transform: translateY(-4px); } }
-
-        /* Real-time System Log Console */
-        #log-console { background: #020617; border: 1px solid #1e293b; color: #4ade80; font-family: monospace; font-size: 0.8rem; padding: 10px; border-radius: 6px; height: 100px; overflow-y: auto; margin-top: 20px; }
-        .badge { display: inline-block; padding: 4px 8px; border-radius: 4px; font-size: 0.8rem; font-weight: bold; margin-bottom: 8px; background: #ef4444; color: white; }
-
-        /* Overlay Modals */
+        @keyframes pulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(244,63,94,0.7); } 70% { box-shadow: 0 0 0 8px rgba(244,63,94,0); } }
+        .center-deck-hub { display: flex; justify-content: center; align-items: center; gap: 30px; margin: 15px 0; }
+        #log-console { background: #020617; border: 1px solid #1e293b; color: #4ade80; font-family: monospace; font-size: 0.75rem; padding: 10px; border-radius: 6px; height: 90px; overflow-y: auto; margin-top: auto; }
         .modal { position: fixed; top: 0; left: 0; width:100%; height:100%; background:rgba(0,0,0,0.85); display:flex; justify-content:center; align-items:center; z-index:999; }
-        .modal-content { background: var(--surface); padding: 30px; border-radius: 12px; text-align: center; max-width: 400px; width: 90%; }
-        .modal-content h2 { margin-bottom: 15px; color: #38bdf8; }
+        .modal-content { background: var(--surface); padding: 25px; border-radius: 12px; text-align: center; max-width: 350px; width: 90%; }
     </style>
-
-    <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-    <script src="https://unpkg.com/html5-qrcode"></script>
 </head>
 <body>
 
@@ -82,69 +55,222 @@
 
     <main id="lobby-screen" class="lobby-grid">
         <section class="panel">
-            <h3>1. Sandbox Environment</h3>
-            <p style="font-size:0.85rem; opacity:0.7; margin-bottom:12px;">Zero network dependencies latency-free play.</p>
-            <button id="btn-vs-computer">vs Computer (Offline)</button>
+            <h3 style="margin-bottom: 8px;">Deterministic Sandbox</h3>
+            <p style="font-size:0.85rem; opacity:0.7; margin-bottom:15px;">Play instantly against the tactical heuristic AI engine locally.</p>
+            <button id="btn-vs-computer">vs Computer (Offline Mode)</button>
         </section>
-
-        <section class="panel">
-            <h3>2. Proximity Pairing (Host Room)</h3>
-            <button id="btn-host-local" style="background:#059669; margin-bottom:8px;">Host Local Match (QR Generate)</button>
-            <button id="btn-host-p2p" style="background:#4f46e5;">Host Remote Match (Code Only)</button>
-            <div id="host-id-display" style="margin-top:10px; text-align:center; font-weight:bold; color:#38bdf8;"></div>
-            <div id="qr-code-container"></div>
-        </section>
-
-        <section class="panel">
-            <h3>3. Remote Entry (Join Room)</h3>
-            <div class="input-group">
-                <input type="text" id="room-id-input" placeholder="Paste Room Code Signature">
-                <button id="btn-join-remote" style="width:auto;">Join</button>
-            </div>
-            <button id="camera-scan-btn" style="margin-top:10px; background:#7c3aed;">Scan QR Code via Camera</button>
-            <div id="camera-reader-view" class="hidden"></div>
-        </section>
+        <div style="text-align: center; opacity: 0.5; font-size: 0.9rem;">— High Stability Protocol —</div>
     </main>
 
     <main id="game-screen" class="arena-grid hidden">
-        <div id="turn-indicator" style="text-align:center; font-weight:bold; color:#38bdf8;">Turn Engine Waiting...</div>
+        <div id="turn-indicator" style="text-align:center; font-weight:bold; color:#38bdf8;">Loading match loop...</div>
         
         <section>
-            <h4 style="margin-bottom:5px;">Opponent Stack</h4>
+            <div style="font-size:0.85rem; margin-bottom:4px; opacity:0.8;">Opponent Hand</div>
             <div id="opponent-hand" class="hand-container"></div>
         </section>
 
         <section class="center-deck-hub">
             <div>
-                <p style="font-size:0.8rem; text-align:center; margin-bottom:4px;">Market Pile</p>
-                <div id="market-deck" class="card-face card-back interactive-deck">
-                    <div>🗂️</div>
-                </div>
+                <div style="font-size:0.75rem; text-align:center; margin-bottom:4px;">Market</div>
+                <div id="market-deck" class="card-face card-back"><div>🗂️</div></div>
             </div>
             <div>
-                <p style="font-size:0.8rem; text-align:center; margin-bottom:4px;">Open Card</p>
+                <div style="font-size:0.75rem; text-align:center; margin-bottom:4px;">Open Card</div>
                 <div id="discard-pile" class="card-face"></div>
-                <div id="active-demand-indicator" class="badge hidden" style="margin-top:8px;"></div>
             </div>
         </section>
 
         <section>
-            <h4 style="margin-bottom:5px;">Your Hand (Tap to Play)</h4>
+            <div style="font-size:0.85rem; margin-bottom:4px; opacity:0.8;">Your Hand (Tap a card to play)</div>
             <div id="player-hand" class="hand-container"></div>
         </section>
 
-        <footer id="log-console">
-            <div>[System] Ready to load modules...</div>
-        </footer>
+        <footer id="log-console"></footer>
     </main>
 
     <div id="winner-modal" class="modal hidden">
         <div class="modal-content">
-            <h2 id="winner-text">Match Concluded</h2>
-            <button id="btn-restart">Return to Main Lobby</button>
+            <h2 id="winner-text" style="margin-bottom:15px; color:#38bdf8;">Match Concluded</h2>
+            <button id="btn-restart">Return to Lobby</button>
         </div>
     </div>
 
-    <script type="module" src="src/app.js"></script>
+    <script>
+        const SHAPES = { CIRCLE: 'Circle', CROSS: 'Cross', TRIANGLE: 'Triangle', STAR: 'Star', SQUARE: 'Square', WHOT: 'Whot' };
+        
+        function createDeck() {
+            const deck = [];
+            let id = 1;
+            [[SHAPES.CIRCLE, [1,2,3,4,5,7,8,9,10,11,12,13,14]], 
+             [SHAPES.CROSS, [1,2,3,5,7,10,11,13,14]], 
+             [SHAPES.TRIANGLE, [1,2,3,4,5,7,8,9,10,11,12,13,14]], 
+             [SHAPES.STAR, [1,2,3,4,5,7,8,11,12,13,14]], 
+             [SHAPES.SQUARE, [1,2,3,5,7,10,11,13,14]]].forEach(([shape, values]) => {
+                values.forEach(v => deck.push({ id: id++, shape, value: v }));
+            });
+            for(let i=0; i<5; i++) deck.push({ id: id++, shape: SHAPES.WHOT, value: 20 });
+            return deck;
+        }
+
+        function shuffle(deck) {
+            const d = [...deck];
+            for (let i = d.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [d[i], d[j]] = [d[j], d[i]];
+            }
+            return d;
+        }
+
+        class WhotEngine {
+            constructor() {
+                this.state = { players: [{id:'p1', name:'You', hand:[]}, {id:'p2', name:'System AI', hand:[], isBot:true}], deck: [], discardPile: [], turnIdx: 0, penalty: 0, demand: null, winner: null };
+                this.dom = { lobby: document.getElementById('lobby-screen'), game: document.getElementById('game-screen'), console: document.getElementById('log-console'), discard: document.getElementById('discard-pile'), playerHand: document.getElementById('player-hand'), opponentHand: document.getElementById('opponent-hand'), market: document.getElementById('market-deck'), turn: document.getElementById('turn-indicator'), modal: document.getElementById('winner-modal'), winText: document.getElementById('winner-text') };
+                this.initEvents();
+            }
+            initEvents() {
+                document.getElementById('btn-vs-computer').addEventListener('click', () => this.start());
+                this.dom.market.addEventListener('click', () => this.drawCard('p1'));
+                document.getElementById('btn-restart').addEventListener('click', () => { this.dom.modal.classList.add('hidden'); this.dom.game.classList.add('hidden'); this.dom.lobby.classList.remove('hidden'); });
+            }
+            log(msg) {
+                this.dom.console.innerHTML += `<div>[${new Date().toLocaleTimeString()}] ${msg}</div>`;
+                this.dom.console.scrollTop = this.dom.console.scrollHeight;
+            }
+            start() {
+                let d = shuffle(createDeck());
+                this.state.players[0].hand = d.splice(0, 6);
+                this.state.players[1].hand = d.splice(0, 6);
+                this.state.discardPile = [d.splice(d.findIndex(c => c.value !== 20), 1)[0]];
+                this.state.deck = d;
+                this.state.turnIdx = 0;
+                this.state.penalty = 0;
+                this.state.demand = null;
+                this.state.winner = null;
+                this.dom.lobby.classList.add('hidden');
+                this.dom.game.classList.remove('hidden');
+                this.dom.console.innerHTML = "";
+                this.log("Match started. Cards dealt cleanly.");
+                this.render();
+            }
+            isPlayable(card) {
+                const top = this.state.discardPile[this.state.discardPile.length - 1];
+                if (this.state.penalty > 0) return (top.value === 2 && card.value === 2) || (top.value === 5 && card.value === 5);
+                if (card.shape === SHAPES.WHOT) return true;
+                if (top.shape === SHAPES.WHOT && this.state.demand) return card.shape === this.state.demand;
+                return card.shape === top.shape || card.value === top.value;
+            }
+            playCard(pid, cid) {
+                if (this.state.players[this.state.turnIdx].id !== pid) return;
+                const p = this.state.players[this.state.turnIdx];
+                const idx = p.hand.findIndex(c => c.id === cid);
+                const card = p.hand[idx];
+                if (!this.isPlayable(card)) return;
+
+                p.hand.splice(idx, 1);
+                this.state.discardPile.push(card);
+                this.state.demand = null;
+
+                this.log(`${p.name} played ${card.shape} ${card.value === 20 ? '(Whot)' : card.value}`);
+
+                if (card.value === 2) this.state.penalty += 2;
+                if (card.value === 5) this.state.penalty += 3;
+
+                if (p.hand.length === 0) {
+                    this.state.winner = p.name;
+                    this.render();
+                    return;
+                }
+
+                if (card.shape === SHAPES.WHOT) {
+                    if (p.isBot) {
+                        const counts = {}; let max = 0, choice = SHAPES.CIRCLE;
+                        p.hand.forEach(c => { if(c.shape!==SHAPES.WHOT){ counts[c.shape] = (counts[c.shape]||0)+1; if(counts[c.shape]>max){ max=counts[c.shape]; choice=c.shape; } } });
+                        this.state.demand = choice;
+                    } else {
+                        const s = prompt("Demand Shape? (Circle, Cross, Triangle, Star, Square)");
+                        this.state.demand = ['Circle','Cross','Triangle','Star','Square'].find(x => x.toLowerCase() === (s||"").toLowerCase().trim()) || SHAPES.CIRCLE;
+                    }
+                    this.log(`WHOT! Demand set to: ${this.state.demand}`);
+                }
+
+                if (card.value !== 1 && card.value !== 14) {
+                    this.state.turnIdx = (this.state.turnIdx + 1) % 2;
+                } else {
+                    this.log(`${p.name} holds on/suspends turn progression.`);
+                }
+                this.render();
+            }
+            drawCard(pid) {
+                if (this.state.players[this.state.turnIdx].id !== pid) return;
+                const p = this.state.players[this.state.turnIdx];
+                const count = this.state.penalty > 0 ? this.state.penalty : 1;
+                
+                for(let i=0; i<count; i++) {
+                    if(this.state.deck.length === 0) {
+                        const top = this.state.discardPile.pop();
+                        this.state.deck = shuffle(this.state.discardPile);
+                        this.state.discardPile = [top];
+                    }
+                    p.hand.push(this.state.deck.shift());
+                }
+                this.log(`${p.name} drew ${count} card(s) from Market.`);
+                this.state.penalty = 0;
+                this.state.turnIdx = (this.state.turnIdx + 1) % 2;
+                this.render();
+            }
+            runAI() {
+                const bot = this.state.players[1];
+                const playable = bot.hand.filter(c => this.isPlayable(c));
+                setTimeout(() => {
+                    if (playable.length > 0) {
+                        const preferred = playable.find(c => c.value === 2 || c.value === 5 || c.value === 1) || playable[0];
+                        this.playCard('p2', preferred.id);
+                    } else {
+                        this.drawCard('p2');
+                    }
+                }, 1000);
+            }
+            render() {
+                const top = this.state.discardPile[this.state.discardPile.length - 1];
+                const p = this.state.players[0];
+                const bot = this.state.players[1];
+                const current = this.state.players[this.state.turnIdx];
+
+                this.dom.discard.className = `card-face shape-${top.shape.toLowerCase()}`;
+                this.dom.discard.innerHTML = `<div>${top.shape==='Whot'?'★':top.shape}</div><div>${top.value===20?'Whot':top.value}</div>`;
+                if(this.state.demand) this.dom.discard.innerHTML += `<div style="font-size:0.7rem;background:#000;padding:2px;border-radius:4px;position:absolute;bottom:2px;left:2px;right:2px;text-align:center;">Use: ${this.state.demand}</div>`;
+
+                this.dom.turn.innerText = `Turn: ${current.name} ${this.state.penalty > 0 ? `(Match Penalty: +${this.state.penalty}!)` : ''}`;
+
+                this.dom.playerHand.innerHTML = "";
+                p.hand.forEach(c => {
+                    const el = document.createElement('div');
+                    el.className = `card-face shape-${c.shape.toLowerCase()}`;
+                    if(this.state.turnIdx === 0 && this.isPlayable(c)) el.classList.add('playable');
+                    el.innerHTML = `<div>${c.shape==='Whot'?'★':c.shape}</div><div>${c.value===20?'Whot':c.value}</div>`;
+                    el.addEventListener('click', () => this.playCard('p1', c.id));
+                    this.dom.playerHand.appendChild(el);
+                });
+
+                this.dom.opponentHand.innerHTML = "";
+                bot.hand.forEach(() => {
+                    const el = document.createElement('div');
+                    el.className = "card-face card-back";
+                    el.innerHTML = "<div>Whot!</div>";
+                    this.dom.opponentHand.appendChild(el);
+                });
+
+                if (this.state.winner) {
+                    this.dom.winText.innerText = `${this.state.winner} Wins!`;
+                    this.dom.modal.classList.remove('hidden');
+                    return;
+                }
+
+                if (this.state.turnIdx === 1) this.runAI();
+            }
+        }
+        window.addEventListener('DOMContentLoaded', () => { window.Engine = new WhotEngine(); });
+    </script>
 </body>
 </html>
