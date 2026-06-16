@@ -1,30 +1,28 @@
-# P2P-whot# 
+# Whot P2P by Azabuike Technologies Inc.
 
-🃏 P2P Whot Engine (Serverless Architecture)
+A highly optimized, serverless, modular edition of the traditional Nigerian Whot! card game layout. Engineered with pure Vanilla ES Modules and decoupled state machines to run completely peer-to-peer over WebRTC data tracks.
 
-A high-performance, ultra-stable, serverless Peer-to-Peer (P2P) implementation of the traditional African card game **Whot!**. This application runs entirely on client devices and utilizes WebRTC data channels for low-latency gameplay sync, backed by a deterministic local AI engine for single-player play and seamless rage-quit protection.
+## 📂 Architecture Framework Layout
+## 🛠️ Execution & Deployment Pipeline Instructions
+The codebase relies completely on native browser ES Modules. No bundlers or build steps (Webpack/Vite) are required.
 
----
+### Local Static Hosting Testing
+To prevent CORS errors originating from modular imports executing on file:// protocols, execute using any localized development server configuration:
+* Using Python: `python -m http.server 8000`
+* Using Node runtime tooling: `npx serve`
 
-## ⚡ Key Architectural Features
+### Continuous Cloud Integration
+To deploy instantly to production:
+1. Initialize a Git repository containing the codebase: `git init`
+2. Push directly to a public **GitHub Pages** tracking branch.
+3. Or immediately drag-and-drop the directory structure into zero-config sandboxes such as **StackBlitz** or **Netlify Drop**.
 
-* **Zero Cloud Architecture:** Hosted entirely free on GitHub Pages. No backend data infrastructure, no server maintenance bills, and zero database latency.
-* **Direct WebRTC Pipeline:** Leverages PeerJS data pipes to link browsers directly. Game actions are passed as lightweight JSON packets, bypassing the need for an intermediate multiplayer server.
-* **Deterministic "Old AI" Brain:** Built with a localized heuristic weight matrix. The AI calculates moves based on current threat vectors, point dumping strategies, and suit dominance without calling heavy external APIs.
-* **Automated AI Takeover:** If a remote player experiences a network drop or closes their browser tab, the local WebRTC closure hook triggers seamlessly—flipping the missing player's status to an AI bot instantly to preserve the match.
-* **Cryptographic Sync Lock:** The Host machine establishes, shuffles, and signs the deck blueprint before broadcasting it to the Client, preventing client-side card injection memory manipulation.
-
----
-
-## 📂 Repository File Structure
-
-```development
-├── index.html          # Main application entry canvas markup
-├── src/
-│   ├── gameState.js    # Immutable core structures, configurations, & deck specs
-│   ├── rulesEngine.js  # Stateless gatekeeper enforcing traditional Whot! rules
-│   ├── gameReducer.js  # Centralized action processor/state mutation factory
-│   ├── aiEngine.js     # Tactical heuristic matrix for autonomous player routines
-│   ├── p2pConnection.js# WebRTC discovery, data bindings, & connection tracking
-│   └── app.js          # Main coordinator linking UI events, engine state, & network
-└── README.md           # Technical documentation and deployment roadmap
+4. ├── index.html               # Presentation canvas view layer and CDN pipeline links
+├── README.md                # Structural validation documentation
+└── src
+├── aiEngine.js          # Tactical heuristic weight calculation matrices
+├── app.js               # Event pipelines and state mesh synchronization coordinator
+├── gameReducer.js       # Pure structural mutation reducer logic
+├── gameState.js         # Deck structures and definition constants
+├── p2pConnection.js     # PeerJS abstraction layer handles WebRTC routing
+└── rulesEngine.js       # Stateless game engine referee validators
