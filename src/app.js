@@ -165,4 +165,58 @@ function renderUI(gameState) {
         localHand: gameState.players[localPlayerKey]?.hand || []
     });
           }
+/**
+ * Configures a localized standalone match layout completely isolated from network
+ * listeners, mapping the Client identity slots directly to the embedded AI execution thread.
+ */
+export function setupLocalAIMatch() {
+    localPlayerKey = 'host';
+    state.session.isHost = true;
+    state.session.peerConnected = false; // Disconnected from network loop entirely
+
+    // Initialize standalone deck configuration parameters
+    const standaloneState = JSON.parse(JSON.stringify(state));
+    let completeDeck = generateRawDeck();
+    completeDeck.sort(() => Math.random() - 0.5);
+
+    // Deal standard configurations
+    standaloneState.players.host.hand = completeDeck.splice(0, 4);
+    standaloneState.players.host.isAI = false;
+    standaloneState.players.host.name = "You";
+
+    standaloneState.players.client.hand = completeDeck.splice(0, 4);
+    standaloneState.players.client.isAI = true; // Turn on computer controller
+    standaloneState.players.client.name = "Computer AI";
+
+    let validStartingTopCard = completeDeck.pop();
+    while (validStartingTopCard.number === 20) {
+        completeDeck.unshift(validStartingTopCard);
+        validStartingTopCard = completeDeck.pop();
+    }
+    standaloneState.discardPile.push(validStartingTopCard);
+    standaloneState.deck = completeDeck;
+    
+    // Set match into structural execution play bounds
+    standaloneState.turn.gameStatus = 'PLAYING';
+
+    // Dispatches initialization changes to refresh console views and activate AI loop triggers
+    state = standaloneState;
+    
+    // Inject custom room ID property parameters back onto window object scope for local QR access fallback validation
+    window.currentRoomId = "OFFLINE_SANDBOX";
+    
+    // Fire structural updates
+    const initAction = { type: 'START_STANDALONE_GAME', payload: standaloneState };
+    // This executes the core state loops inside app.js seamlessly
+    const coreAction = handleGameAction(state, { type: 'START_NETWORK_GAME', payload: standaloneState });
+    
+    // Force direct module evaluation
+    state = coreAction;
+    state.turn.gameStatus = 'PLAYING'; // Hard override to jump direct out of lobby status
+    
+    // Cascade rendering pipeline refreshes
+    console.log("--- STANDALONE AI ENVIRONMENT DEPLOYED ---");
+    console.log(`Top Card: ${state.discardPile[state.discardPile.length - 1].shape} ${state.discardPile[state.discardPile.length - 1].number}`);
+    console.log(`Your hand strength: ${state.players.host.hand.length} cards.`);
+}
 
