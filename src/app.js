@@ -11,7 +11,7 @@ import { initializeHost, connectToRoom, broadcastGameAction } from './p2pConnect
  */
 
 let state = createInitialState();
-let localPlayerKey = null; // Stays 'host' or 'client' for the local user browser
+export let localPlayerKey = null; // Exported to allow visibility check if needed
 
 /**
  * Event handler triggered whenever a valid game action alters the state.
@@ -25,11 +25,14 @@ function onStateMutated(newState) {
     const currentTurnKey = state.turn.currentTurn;
     const activePlayer = state.players[currentTurnKey];
 
-    if (state.turn.gameStatus === 'PLAYING' && activePlayer.isAI) {
+    if (state.turn.gameStatus === 'PLAYING' && activePlayer && activePlayer.isAI) {
         // Enforce a natural 1-second delay so the AI doesn't play instantly like a machine
         setTimeout(() => {
-            const aiAction = computeBestAIMove(state, currentTurnKey);
-            dispatch(aiAction, true); // Process locally and broadcast
+            // Re-verify it is still the AI's turn after the timeout delay
+            if (state.turn.currentTurn === currentTurnKey && state.turn.gameStatus === 'PLAYING') {
+                const aiAction = computeBestAIMove(state, currentTurnKey);
+                dispatch(aiAction, true); // Process locally and broadcast if connected
+            }
         }, 1000);
     }
 }
@@ -41,11 +44,9 @@ function onStateMutated(newState) {
 function handlePeerDisconnect() {
     console.warn("System Alert: Opponent dropped! Transferring control to AI Brain...");
     
-    // Clone state safely to apply structural edits
     const updatedState = JSON.parse(JSON.stringify(state));
     updatedState.session.opponentDisconnected = true;
     
-    // Determine who dropped and convert them into an AI bot
     if (localPlayerKey === 'host') {
         updatedState.players.client.isAI = true;
         updatedState.players.client.name = "AI Bot (Guest)";
@@ -63,19 +64,25 @@ function handlePeerDisconnect() {
  * @param {Boolean} originIsLocal - True if the action originated on this machine's UI.
  */
 export function dispatch(action, originIsLocal = true) {
-    // 1. Run the action through our deterministic rule validator/reducer
+    // Structural bypass for network peer alignment setup
+    if (action.type === 'START_NETWORK_GAME') {
+        onStateMutated(action.payload);
+        return;
+    }
+
+    // Run standard actions through our deterministic rule validator/reducer
     const nextState = handleGameAction(state, action);
     
-    // 2. Commit the new state variant locally
+    // Commit the new state variant locally
     onStateMutated(nextState);
 
-    // 3. If the action happened on this machine, serialize and beam it across the WebRTC wire
+    // If the action happened on this machine, serialize and beam it across the WebRTC wire
     if (originIsLocal && state.session.peerConnected) {
         broadcastGameAction(action);
     }
 }
 
-// --- UI Action Bindings (Hook these directly to HTML button clicks) ---
+// --- UI Action Bindings ---
 
 export async function actionCreateRoom() {
     localPlayerKey = 'host';
@@ -83,11 +90,12 @@ export async function actionCreateRoom() {
 
     try {
         const roomId = await initializeHost(
-            (remoteAction) => dispatch(remoteAction, false), // Handle inbound network actions
-            () => handlePeerDisconnect()                     // Handle inbound drop signals
+            (remoteAction) => dispatch(remoteAction, false), 
+            () => handlePeerDisconnect()                     
         );
 
         state.session.roomId = roomId;
+        window.currentRoomId = roomId; // Assign fallback anchor safely to window context
         state.turn.gameStatus = 'LOBBY';
         renderUI(state);
         console.log(`Room created successfully! Code: ${roomId}`);
@@ -113,24 +121,19 @@ export function actionJoinRoom(targetRoomId) {
 
 /**
  * Executes the structural deck setup and triggers the official game start match sequence.
- * Only the Host is permitted to call this method to enforce cryptographic safety.
  */
 export function actionStartMatch() {
     if (!state.session.isHost) return;
 
     const setupState = JSON.parse(JSON.stringify(state));
     
-    // 1. Compile deck array and shuffle it securely
     let completeDeck = generateRawDeck();
-    completeDeck.sort(() => Math.random() - 0.5); // Fast secure inline array sort
+    completeDeck.sort(() => Math.random() - 0.5); 
 
-    // 2. Deal initial hands (traditional Whot rules require 4 cards each to start)
     setupState.players.host.hand = completeDeck.splice(0, 4);
     setupState.players.client.hand = completeDeck.splice(0, 4);
 
-    // 3. Establish initial discard stack top card
     let validStartingTopCard = completeDeck.pop();
-    // A game cannot start with a wild card (20) on top of the stack
     while (validStartingTopCard.number === 20) {
         completeDeck.unshift(validStartingTopCard);
         validStartingTopCard = completeDeck.pop();
@@ -138,54 +141,37 @@ export function actionStartMatch() {
     setupState.discardPile.push(validStartingTopCard);
     setupState.deck = completeDeck;
 
-    // 4. Update operational descriptors
     setupState.session.peerConnected = true;
     setupState.turn.gameStatus = 'PLAYING';
 
-    // 5. Package state modification as an initialization action payload and sync it
     const initAction = { type: 'START_NETWORK_GAME', payload: setupState };
     
-    // Process locally first
+    // Distribute state initialization updates across network pipeline
     state = setupState;
     onStateMutated(state);
-    
-    // Send full raw configuration layout parameters down the pipe to sync Client machine
     broadcastGameAction(initAction);
 }
 
-/**
- * Structural UI Binder Shell. Replace console logging mechanisms with 
- * your chosen web display layout framework (Vanilla DOM, React, Canvas, etc.).
- */
-function renderUI(gameState) {
-    console.log("--- ENGINE STATE VIEW REFRESH ---", {
-        status: gameState.turn.gameStatus,
-        turn: gameState.turn.currentTurn,
-        topCard: gameState.discardPile[gameState.discardPile.length - 1],
-        localHand: gameState.players[localPlayerKey]?.hand || []
-    });
-          }
 /**
  * Configures a localized standalone match layout completely isolated from network
  * listeners, mapping the Client identity slots directly to the embedded AI execution thread.
  */
 export function setupLocalAIMatch() {
     localPlayerKey = 'host';
-    state.session.isHost = true;
-    state.session.peerConnected = false; // Disconnected from network loop entirely
+    
+    const standaloneState = createInitialState();
+    standaloneState.session.isHost = true;
+    standaloneState.session.peerConnected = false; 
 
-    // Initialize standalone deck configuration parameters
-    const standaloneState = JSON.parse(JSON.stringify(state));
     let completeDeck = generateRawDeck();
     completeDeck.sort(() => Math.random() - 0.5);
 
-    // Deal standard configurations
     standaloneState.players.host.hand = completeDeck.splice(0, 4);
     standaloneState.players.host.isAI = false;
     standaloneState.players.host.name = "You";
 
     standaloneState.players.client.hand = completeDeck.splice(0, 4);
-    standaloneState.players.client.isAI = true; // Turn on computer controller
+    standaloneState.players.client.isAI = true; 
     standaloneState.players.client.name = "Computer AI";
 
     let validStartingTopCard = completeDeck.pop();
@@ -196,27 +182,30 @@ export function setupLocalAIMatch() {
     standaloneState.discardPile.push(validStartingTopCard);
     standaloneState.deck = completeDeck;
     
-    // Set match into structural execution play bounds
+    // Explicitly set operational bounds directly to PLAYING before firing state mutations
     standaloneState.turn.gameStatus = 'PLAYING';
+    standaloneState.turn.currentTurn = 'host'; // Enforce user starts match
 
-    // Dispatches initialization changes to refresh console views and activate AI loop triggers
-    state = standaloneState;
-    
-    // Inject custom room ID property parameters back onto window object scope for local QR access fallback validation
     window.currentRoomId = "OFFLINE_SANDBOX";
     
-    // Fire structural updates
-    const initAction = { type: 'START_STANDALONE_GAME', payload: standaloneState };
-    // This executes the core state loops inside app.js seamlessly
-    const coreAction = handleGameAction(state, { type: 'START_NETWORK_GAME', payload: standaloneState });
+    // Commit the newly configured offline match state object directly to engine
+    onStateMutated(standaloneState);
     
-    // Force direct module evaluation
-    state = coreAction;
-    state.turn.gameStatus = 'PLAYING'; // Hard override to jump direct out of lobby status
-    
-    // Cascade rendering pipeline refreshes
     console.log("--- STANDALONE AI ENVIRONMENT DEPLOYED ---");
     console.log(`Top Card: ${state.discardPile[state.discardPile.length - 1].shape} ${state.discardPile[state.discardPile.length - 1].number}`);
     console.log(`Your hand strength: ${state.players.host.hand.length} cards.`);
 }
 
+/**
+ * Structural UI Binder Shell output pipeline.
+ */
+function renderUI(gameState) {
+    const topCard = gameState.discardPile[gameState.discardPile.length - 1];
+    console.log("--- ENGINE STATE VIEW REFRESH ---", {
+        status: gameState.turn.gameStatus,
+        turn: gameState.turn.currentTurn,
+        topCard: topCard ? `${topCard.shape} ${topCard.number}` : "None",
+        localHandCount: gameState.players[localPlayerKey || 'host']?.hand.length || 0
+    });
+}
+    
