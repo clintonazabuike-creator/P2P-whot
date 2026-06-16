@@ -1,90 +1,102 @@
 /**
- * ARCHITECTURE NOTE:
- * To ensure absolute stability and prevent state-mutation bugs, the game engine
- * reads and updates this centralized state object via deterministic actions.
+ * Whot P2P by Azabuike Technologies Inc.
+ * File: src/gameState.js
+ * Purpose: Core game state definitions, deck generation, and immutable state helpers.
  */
 
-// 1. Core Card Configurations
 export const SHAPES = {
     CIRCLE: 'Circle',
-    TRIANGLE: 'Triangle',
     CROSS: 'Cross',
-    SQUARE: 'Square',
+    TRIANGLE: 'Triangle',
     STAR: 'Star',
+    SQUARE: 'Square',
     WHOT: 'Whot'
 };
 
-// The traditional Nigerian Whot deck composition (Numbers allocation per shape)
-export const DECK_CONFIG = {
-    [SHAPES.CIRCLE]:   [1, 2, 3, 4, 5, 7, 8, 10, 11, 12, 13, 14],
-    [SHAPES.TRIANGLE]: [1, 2, 3, 4, 5, 7, 8, 10, 11, 12, 13, 14],
-    [SHAPES.CROSS]:    [1, 2, 3, 5, 7, 10, 11, 13, 14],
-    [SHAPES.SQUARE]:   [1, 2, 3, 5, 7, 10, 11, 13, 14],
-    [SHAPES.STAR]:     [1, 2, 3, 4, 5, 7, 8, 10, 11, 12, 13, 14], // Note: Stars count double points at checking
-    [SHAPES.WHOT]:     [20, 20, 20, 20, 20] // The wild cards
+export const ACTIONS = {
+    START_GAME: 'START_GAME',
+    PLAY_CARD: 'PLAY_CARD',
+    DRAW_CARD: 'DRAW_CARD',
+    CHOOSE_MARKET: 'CHOOSE_MARKET',
+    AI_TURN: 'AI_TURN',
+    SYNC_STATE: 'SYNC_STATE',
+    PLAYER_DISCONNECTED: 'PLAYER_DISCONNECTED'
 };
 
-// 2. Initial State Factory
-export function createInitialState() {
+export const MATCH_MODES = {
+    COMPUTER: 'COMPUTER',
+    LOCAL_P2P: 'LOCAL_P2P',
+    ONLINE_P2P: 'ONLINE_P2P'
+};
+
+/**
+ * Generates a standard Nigerian Whot! 54-card deck
+ */
+export function createDeck() {
+    const deck = [];
+    let id = 1;
+
+    // Circles: 1-5, 7-14
+    const circles = [1, 2, 3, 4, 5, 7, 8, 9, 10, 11, 12, 13, 14];
+    circles.forEach(n => deck.push({ id: id++, shape: SHAPES.CIRCLE, value: n }));
+
+    // Crosses: 1-3, 5, 7, 10, 11, 13, 14
+    const crosses = [1, 2, 3, 5, 7, 10, 11, 13, 14];
+    crosses.forEach(n => deck.push({ id: id++, shape: SHAPES.CROSS, value: n }));
+
+    // Triangles: 1-5, 7-14
+    const triangles = [1, 2, 3, 4, 5, 7, 8, 9, 10, 11, 12, 13, 14];
+    triangles.forEach(n => deck.push({ id: id++, shape: SHAPES.TRIANGLE, value: n }));
+
+    // Stars: 1-5, 7, 8, 11, 12, 13, 14 (Stars double their score value in traditional counts)
+    const stars = [1, 2, 3, 4, 5, 7, 8, 11, 12, 13, 14];
+    stars.forEach(n => deck.push({ id: id++, shape: SHAPES.STAR, value: n }));
+
+    // Squares: 1-3, 5, 7, 10, 11, 13, 14
+    const squares = [1, 2, 3, 5, 7, 10, 11, 13, 14];
+    squares.forEach(n => deck.push({ id: id++, shape: SHAPES.SQUARE, value: n }));
+
+    // Whot (Wildcards): 5 cards altogether, all assigned value 20
+    for (let i = 0; i < 5; i++) {
+        deck.push({ id: id++, shape: SHAPES.WHOT, value: 20 });
+    }
+
+    return deck;
+}
+
+/**
+ * Knuth-Shuffle for unbiased card distribution
+ */
+export function shuffle(deck) {
+    const newDeck = [...deck];
+    for (let i = newDeck.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [newDeck[i], newDeck[j]] = [newDeck[j], newDeck[i]];
+    }
+    return newDeck;
+}
+
+/**
+ * Initializes a pristine, structure-validated game state object
+ */
+export function initializeState(matchMode, hostName = "Player 1", guestName = "Opponent") {
     return {
-        // Networking & Session Metadata
-        session: {
-            roomId: null,
-            isHost: false,
-            peerConnected: false,
-            opponentDisconnected: false, // Flag for AI takeover trigger
-        },
-
-        // Core Game Core Collections
-        deck: [],            // Draw pile (Shuffled array of card objects)
-        discardPile: [],     // Played cards. Last element is the current top card
-        deckHash: null,      // Cryptographic signature of the deck for P2P anti-cheat validation
-
-        // Player Registries
-        players: {
-            host: {
-                id: null,
-                name: "Host",
-                hand: [],
-                isAI: false
-            },
-            client: {
-                id: null,
-                name: "Guest",
-                hand: [],
-                isAI: false // Can switch to true dynamically if opponent drops
-            }
-        },
-
-        // Turn Management & Rules State
-        turn: {
-            currentTurn: 'host',     // 'host' or 'client'
-            activeSuit: null,        // Overrides the current shape when a Whot (20) card is played
-            cardsToDraw: 0,          // Accumulator for stacked penalties (Pick Two / General Market)
-            isHoldOnActive: false,   // Tracks if a player was stalled by a '1'
-            gameStatus: 'LOBBY'      // 'LOBBY', 'PLAYING', 'GAME_OVER'
-        },
-
-        // Analytics / Scoring
-        matchHistory: []
+        matchMode,
+        players: [
+            { id: "p1", name: hostName, hand: [], isBot: false, score: 0 },
+            { id: "p2", name: guestName, hand: [], isBot: matchMode === MATCH_MODES.COMPUTER, score: 0 }
+        ],
+        deck: [],
+        discardPile: [],
+        currentTurnIdx: 0, // 0 = Player 1, 1 = Player 2
+        activeDemandShape: null, // Holds the shape requested by a Whot (20) card
+        turnPenaltyStack: 0, // Accumulator for Pick Two (2) and Pick Three (5)
+        holdOnActive: false, // Tracks if a "Hold On" (1) is active
+        winnerId: null,
+        gameLog: ["Engine initialized. Ready to deal."]
     };
 }
 
-// 3. Helper Factory: Generate a completely raw, un-shuffled deck
-export function generateRawDeck() {
-    const freshDeck = [];
-    let idCounter = 0;
-
-    for (const [shape, numbers] of Object.entries(DECK_CONFIG)) {
-        for (const num of numbers) {
-            freshDeck.push({
-                id: `card_${idCounter++}`, // Unique identifier for DOM rendering keys and tracking
-                shape: shape,
-                number: num,
-                // Stars carry double penalties during checking phase
-                pointValue: shape === SHAPES.STAR ? num * 2 : num 
-            });
-        }
-    }
-    return freshDeck;
-              }
+export function deepCloneState(state) {
+    return JSON.parse(JSON.stringify(state));
+}
