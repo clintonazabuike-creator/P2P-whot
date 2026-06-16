@@ -5,6 +5,23 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Whot P2P - Azabuike Technologies Inc.</title>
     
+    <script>
+        window.addEventListener('error', function(e) {
+            const errorOverlay = document.getElementById('errorOverlay');
+            if (errorOverlay) {
+                errorOverlay.style.display = 'block';
+                errorOverlay.innerHTML += `<br>⚠️ <b>Error:</b> ${e.message}<br>📂 <b>File:</b> ${e.filename}<br>📍 <b>Line:</b> ${e.lineno}<br>-------------------`;
+            }
+        });
+        window.addEventListener('unhandledrejection', function(e) {
+            const errorOverlay = document.getElementById('errorOverlay');
+            if (errorOverlay) {
+                errorOverlay.style.display = 'block';
+                errorOverlay.innerHTML += `<br>⚠️ <b>Promise Rejected:</b> ${e.reason}<br>-------------------`;
+            }
+        });
+    </script>
+
     <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <script src="https://unpkg.com/html5-qrcode"></script>
@@ -60,6 +77,23 @@
             justify-content: center;
             padding: 1.5rem;
             gap: 1.5rem;
+        }
+
+        /* Diagnostic Error Terminal Overlay */
+        .error-overlay {
+            width: 100%;
+            max-width: 440px;
+            background-color: #450a0a;
+            border: 2px solid var(--danger);
+            color: #fca5a5;
+            padding: 1rem;
+            border-radius: 8px;
+            font-family: monospace;
+            font-size: 0.85rem;
+            margin-bottom: 1rem;
+            display: none;
+            box-sizing: border-box;
+            text-align: left;
         }
 
         .lobby-panel {
@@ -134,15 +168,10 @@
             color: var(--text-main);
         }
 
-        button.secondary:hover {
-            background-color: rgba(255, 255, 255, 0.05);
-        }
-
         button.w-full {
             width: 100%;
         }
 
-        /* QR Interactivity Containers */
         #qrcode {
             display: flex;
             justify-content: center;
@@ -186,6 +215,10 @@
     </header>
 
     <main>
+        <div class="error-overlay" id="errorOverlay">
+            <b>🔴 CRITICAL RUNTIME LOG ENCOUNTERED:</b>
+        </div>
+
         <div class="lobby-panel" id="lobbyUi">
             <h3 style="margin-top:0;">Select Match Architecture</h3>
             
@@ -232,7 +265,6 @@
         const logger = document.getElementById('terminalLog');
         let html5QrcodeScanner = null;
 
-        // Custom Stream Logging Hook
         function logToTerminal(msg, isWarn = false) {
             const color = isWarn ? 'color: #eab308;' : '';
             logger.innerHTML += `<br><span style="${color}">> ${msg}</span>`;
@@ -242,20 +274,17 @@
         console.log = (msg) => logToTerminal(typeof msg === 'object' ? JSON.stringify(msg) : msg);
         console.warn = (msg) => logToTerminal(msg, true);
 
-        // --- MODE 1: LOCAL COMPUTER BOT TRIGGER ---
+        // --- MODE 1 ---
         document.getElementById('btnPlayAI').addEventListener('click', () => {
-            console.log("Configuring Offline Local Sandbox Matrix...");
             setupLocalAIMatch();
             document.getElementById('btnPlayAI').style.display = 'none';
         });
 
-        // --- MODE 2: LOCAL QR PAIRING PIPELINES ---
+        // --- MODE 2 ---
         document.getElementById('btnLocalHost').addEventListener('click', async () => {
             document.getElementById('btnLocalHost').disabled = true;
-            console.log("Generating connection node keys...");
             await actionCreateRoom();
             
-            // Read RoomID out of application variables via input field cache assignment
             const code = document.getElementById('remoteCodeInput').value || window.currentRoomId;
             if (code) {
                 document.getElementById('qrcode').style.display = 'block';
@@ -265,7 +294,6 @@
                     width: 180,
                     height: 180
                 });
-                console.log("QR Code generation successful. Present screen to guest scanner.");
                 document.getElementById('btnStartGame').style.display = 'block';
             }
         });
@@ -274,20 +302,15 @@
             const readerElement = document.getElementById('reader');
             readerElement.style.display = 'block';
             
-            console.log("Initializing camera hardware streams...");
             html5QrcodeScanner = new Html5QrcodeScanner("reader", { fps: 10, qrbox: 250 });
-            
             html5QrcodeScanner.render((decodedText) => {
-                console.log(`Optical handshake match: ${decodedText}`);
                 actionJoinRoom(decodedText);
                 html5QrcodeScanner.clear();
                 readerElement.style.display = 'none';
-            }, (error) => {
-                // Silent catch tracking frame updates
             });
         });
 
-        // --- MODE 3: ONLINE P2P ACTIONS ---
+        // --- MODE 3 ---
         document.getElementById('btnOnlineHost').addEventListener('click', async () => {
             document.getElementById('btnOnlineHost').disabled = true;
             await actionCreateRoom();
@@ -309,4 +332,3 @@
     </script>
 </body>
 </html>
-
