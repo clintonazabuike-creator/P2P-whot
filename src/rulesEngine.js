@@ -1,78 +1,80 @@
+/**
+ * Whot P2P by Azabuike Technologies Inc.
+ * File: src/rulesEngine.js
+ * Purpose: Pure, functional card validation and dynamic rule application.
+ */
+
 import { SHAPES } from './gameState.js';
 
-/**
- * ARCHITECTURE NOTE:
- * This engine is entirely stateless. It takes pure data inputs and returns 
- * booleans or state side-effects. This prevents desynchronization over P2P networks.
- */
+export const RulesEngine = {
+    /**
+     * Determines if a card is legally playable on top of the current open card
+     */
+    isCardPlayable(card, topCard, activeDemandShape, turnPenaltyStack) {
+        // If there is an active penalty stack, player MUST either play another penalty card to stack it or draw.
+        if (turnPenaltyStack > 0) {
+            if (topCard.value === 2 && card.value !== 2) return false;
+            if (topCard.value === 5 && card.value !== 5) return false;
+        }
 
-/**
- * Validates whether a card can be legally played on top of the current discard pile.
- * * @param {Object} cardToPlay - The card object the player is attempting to drop.
- * @param {Object} topCard - The current active card at the top of the discard pile.
- * @param {String|null} activeSuit - The suit requested by a previously played Whot (20) card.
- * @returns {Boolean} - True if the move follows official competitive rules.
- */
-export function isValidMove(cardToPlay, topCard, activeSuit) {
-    // 1. A 'Whot' card (20) can ALWAYS be played on any card at any time
-    if (cardToPlay.shape === SHAPES.WHOT) {
-        return true;
+        // Whot cards (20) are wildcards and can always be played
+        if (card.shape === SHAPES.WHOT) return true;
+
+        // If a Whot card was previously played and a shape demand is active
+        if (topCard.shape === SHAPES.WHOT && activeDemandShape) {
+            return card.shape === activeDemandShape;
+        }
+
+        // Normal card matching rules: Match by shape OR match by value
+        return card.shape === topCard.shape || card.value === topCard.value;
+    },
+
+    /**
+     * Examines a played card and returns status modifiers for the state machine
+     */
+    evaluateCardEffects(card) {
+        const effects = {
+            penaltyCardsToDraw: 0,
+            holdOn: false,
+            suspension: false,
+            requiresDemand: false
+        };
+
+        if (card.shape === SHAPES.WHOT) {
+            effects.requiresDemand = true;
+            return effects;
+        }
+
+        switch (card.value) {
+            case 1:  // Hold On: The current player plays again
+                effects.holdOn = true;
+                break;
+            case 2:  // Pick Two: Next player must draw 2 or stack another 2
+                effects.penaltyCardsToDraw = 2;
+                break;
+            case 5:  // Pick Three: Next player must draw 3 or stack another 5
+                effects.penaltyCardsToDraw = 3;
+                break;
+            case 14: // Suspension: Next player skips their turn
+                effects.suspension = true;
+                break;
+            default:
+                break;
+        }
+
+        return effects;
+    },
+
+    /**
+     * Calculates the total remaining points in a player's hand (used when market ends or game wraps)
+     * Stars count double their value.
+     */
+    calculateHandScore(hand) {
+        return hand.reduce((total, card) => {
+            if (card.shape === SHAPES.STAR) {
+                return total + (card.value * 2);
+            }
+            return total + card.value;
+        }, 0);
     }
-
-    // 2. If a Whot card was previously played and an active suit change is enforced
-    if (activeSuit) {
-        // The player must match the requested suit, OR drop another Whot card to hijack the suit
-        return cardToPlay.shape === activeSuit;
-    }
-
-    // 3. Standard Play Rules (No active Whot suit constraint)
-    // The card must match either the shape OR the number of the top card
-    const matchesShape = cardToPlay.shape === topCard.shape;
-    const matchesNumber = cardToPlay.number === topCard.number;
-
-    return matchesShape || matchesNumber;
-}
-
-/**
- * Evaluates a played card to see if it triggers an action or penalty flag.
- * This handles the structural "Special Cards" mechanics.
- * * @param {Object} playedCard - The card that was verified and dropped.
- * @returns {Object} - An effects payload detailing what the system must enforce next.
- */
-export function getCardEffects(playedCard) {
-    const effects = {
-        mustChangeSuit: false,  // Triggered by 20 (Whot)
-        penaltyCards: 0,        // Cards to accumulate to the next player's draw pool
-        isHoldOn: false,        // Suspends the immediate next turn if true
-        shouldSwitchTurn: true  // Default state, can be overridden by specific cards
-    };
-
-    switch (playedCard.number) {
-        case 1: // "Hold On"
-            effects.isHoldOn = true;
-            effects.shouldSwitchTurn = false; // Same player plays again in a 1v1 match
-            break;
-
-        case 2: // "Pick Two"
-            effects.penaltyCards = 2;
-            effects.shouldSwitchTurn = true;
-            break;
-
-        case 14: // "General Market"
-            effects.penaltyCards = 1;
-            effects.shouldSwitchTurn = true;
-            break;
-
-        case 20: // "Whot" (Wild card)
-            effects.mustChangeSuit = true;
-            effects.shouldSwitchTurn = true;
-            break;
-
-        default:
-            // Standard non-action card (numbers 3, 4, 5, 7, 8, 10, 11, 12, 13)
-            break;
-    }
-
-    return effects;
-}
-
+};
