@@ -6,6 +6,8 @@
     <title>Whot P2P - Azabuike Technologies Inc.</title>
     
     <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <script src="https://unpkg.com/html5-qrcode"></script>
 
     <style>
         :root {
@@ -15,6 +17,7 @@
             --text-main: #f8fafc;
             --text-muted: #94a3b8;
             --success: #22c55e;
+            --danger: #ef4444;
         }
 
         body {
@@ -55,8 +58,8 @@
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            padding: 2rem;
-            gap: 2rem;
+            padding: 1.5rem;
+            gap: 1.5rem;
         }
 
         .lobby-panel {
@@ -65,44 +68,64 @@
             border-radius: 12px;
             border: 1px solid #334155;
             box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
-            max-width: 400px;
+            max-width: 440px;
             width: 100%;
             text-align: center;
+            box-sizing: border-box;
+        }
+
+        .mode-section {
+            background: rgba(15, 23, 42, 0.4);
+            padding: 1.25rem;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+            border: 1px solid #1e293b;
+            text-align: left;
+        }
+
+        .mode-section h4 {
+            margin: 0 0 0.5rem 0;
+            color: var(--text-main);
+            font-size: 1.05rem;
+        }
+
+        .mode-section p {
+            margin: 0 0 1rem 0;
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            line-height: 1.4;
         }
 
         .input-group {
-            margin: 1.5rem 0;
             display: flex;
-            flex-direction: column;
             gap: 0.5rem;
+            margin-top: 0.5rem;
         }
 
         input {
             background-color: var(--bg-color);
             border: 1px solid #475569;
-            padding: 0.75rem;
+            padding: 0.6rem;
             border-radius: 6px;
             color: var(--text-main);
-            font-size: 1rem;
-            text-align: center;
+            font-size: 0.9rem;
+            flex: 1;
         }
 
         button {
             background-color: var(--accent-color);
             color: white;
             border: none;
-            padding: 0.75rem 1.5rem;
-            font-size: 1rem;
+            padding: 0.75rem 1.25rem;
+            font-size: 0.95rem;
             font-weight: 600;
             border-radius: 6px;
             cursor: pointer;
-            transition: opacity 0.2s ease;
-            width: 100%;
-            margin-bottom: 0.7rem;
+            transition: background 0.2s ease;
         }
 
         button:hover {
-            opacity: 0.9;
+            background-color: #2563eb;
         }
 
         button.secondary {
@@ -111,7 +134,34 @@
             color: var(--text-main);
         }
 
-        /* Console Output Viewport */
+        button.secondary:hover {
+            background-color: rgba(255, 255, 255, 0.05);
+        }
+
+        button.w-full {
+            width: 100%;
+        }
+
+        /* QR Interactivity Containers */
+        #qrcode {
+            display: flex;
+            justify-content: center;
+            margin: 1rem 0;
+            background: white;
+            padding: 1rem;
+            border-radius: 8px;
+            display: none;
+        }
+
+        #reader {
+            width: 100%;
+            background: black;
+            border-radius: 8px;
+            overflow: hidden;
+            display: none;
+            margin-top: 0.5rem;
+        }
+
         .terminal-log {
             width: 100%;
             max-width: 600px;
@@ -122,9 +172,9 @@
             border-radius: 8px;
             font-size: 0.85rem;
             color: var(--success);
-            height: 150px;
+            height: 140px;
             overflow-y: auto;
-            text-align: left;
+            box-sizing: border-box;
         }
     </style>
 </head>
@@ -137,67 +187,124 @@
 
     <main>
         <div class="lobby-panel" id="lobbyUi">
-            <h3>Game Room Control</h3>
-            <p style="color: var(--text-muted); font-size: 0.9rem;">Create a session as host or insert a peer room code to join an active match.</p>
+            <h3 style="margin-top:0;">Select Match Architecture</h3>
             
-            <hr style="border-color: #334155; margin: 1.5rem 0;">
-
-            <button id="btnCreate">Create Host Room</button>
-            
-            <div class="input-group">
-                <input type="text" id="roomCodeInput" placeholder="Enter Room Code">
-                <button id="btnJoin" class="secondary">Join Room</button>
+            <div class="mode-section">
+                <h4>Single Player Mode</h4>
+                <p>Instant matchmaking scenario directly matching you against our deterministic, local heuristic AI engine.</p>
+                <button id="btnPlayAI" class="w-full" style="background-color: #6366f1;">Play vs Computer</button>
             </div>
 
-            <button id="btnStart" style="display: none; background-color: var(--success);">Start Match</button>
+            <div class="mode-section">
+                <h4>Local P2P (Nearby)</h4>
+                <p>Connect instantly with a player right next to you via swift optical QR authentication codes.</p>
+                <div style="display: flex; gap: 0.5rem;">
+                    <button id="btnLocalHost" style="flex:1;">Show QR</button>
+                    <button id="btnLocalJoin" class="secondary" style="flex:1;">Scan QR</button>
+                </div>
+                <div id="qrcode"></div>
+                <div id="reader"></div>
+            </div>
+
+            <div class="mode-section">
+                <h4>Online P2P (Remote)</h4>
+                <p>Generate a unique peer transmission code to link across the network with players out of range.</p>
+                <button id="btnOnlineHost" class="w-full secondary" style="margin-bottom:0.5rem;">Host Remote Room</button>
+                <div class="input-group">
+                    <input type="text" id="remoteCodeInput" placeholder="Paste Remote Room ID">
+                    <button id="btnOnlineJoin">Join</button>
+                </div>
+            </div>
+
+            <button id="btnStartGame" style="display: none; background-color: var(--success); width:100%; margin-top:1rem; padding:1rem; font-size:1.1rem;">
+                Launch Match Matrix
+            </button>
         </div>
 
         <div class="terminal-log" id="terminalLog">
-            [System Engine Initialized] Ready for network deployment...
+            [System Engine Initialized] Multi-Option Infrastructure Status: Online. Ready for deployment...
         </div>
     </main>
 
     <script type="module">
-        import { actionCreateRoom, actionJoinRoom, actionStartMatch } from './src/app.js';
+        import { actionCreateRoom, actionJoinRoom, actionStartMatch, setupLocalAIMatch } from './src/app.js';
 
         const logger = document.getElementById('terminalLog');
-        
-        // Override global console logging context to stream feedback directly onto the interface window
-        const oldLog = console.log;
-        console.log = function (message, ...args) {
-            oldLog(message, ...args);
-            const cleanMessage = typeof message === 'object' ? JSON.stringify(message) : message;
-            logger.innerHTML += `<br>> ${cleanMessage}`;
-            logger.scrollTop = logger.scrollHeight;
-        };
+        let html5QrcodeScanner = null;
 
-        const oldWarn = console.warn;
-        console.warn = function (message, ...args) {
-            oldWarn(message, ...args);
-            logger.innerHTML += `<br><span style="color: #eab308">> WARN: ${message}</span>`;
+        // Custom Stream Logging Hook
+        function logToTerminal(msg, isWarn = false) {
+            const color = isWarn ? 'color: #eab308;' : '';
+            logger.innerHTML += `<br><span style="${color}">> ${msg}</span>`;
             logger.scrollTop = logger.scrollHeight;
-        };
+        }
 
-        // Wire Interface Actions to Orchestration Stack
-        document.getElementById('btnCreate').addEventListener('click', async () => {
-            document.getElementById('btnCreate').disabled = true;
-            await actionCreateRoom();
-            document.getElementById('btnStart').style.display = 'block';
+        console.log = (msg) => logToTerminal(typeof msg === 'object' ? JSON.stringify(msg) : msg);
+        console.warn = (msg) => logToTerminal(msg, true);
+
+        // --- MODE 1: LOCAL COMPUTER BOT TRIGGER ---
+        document.getElementById('btnPlayAI').addEventListener('click', () => {
+            console.log("Configuring Offline Local Sandbox Matrix...");
+            setupLocalAIMatch();
+            document.getElementById('btnPlayAI').style.display = 'none';
         });
 
-        document.getElementById('btnJoin').addEventListener('click', () => {
-            const code = document.getElementById('roomCodeInput').value.trim();
+        // --- MODE 2: LOCAL QR PAIRING PIPELINES ---
+        document.getElementById('btnLocalHost').addEventListener('click', async () => {
+            document.getElementById('btnLocalHost').disabled = true;
+            console.log("Generating connection node keys...");
+            await actionCreateRoom();
+            
+            // Read RoomID out of application variables via input field cache assignment
+            const code = document.getElementById('remoteCodeInput').value || window.currentRoomId;
             if (code) {
-                actionJoinRoom(code);
-                document.getElementById('btnJoin').disabled = true;
-            } else {
-                alert("Please paste a valid host room code.");
+                document.getElementById('qrcode').style.display = 'block';
+                document.getElementById('qrcode').innerHTML = "";
+                new QRCode(document.getElementById("qrcode"), {
+                    text: code,
+                    width: 180,
+                    height: 180
+                });
+                console.log("QR Code generation successful. Present screen to guest scanner.");
+                document.getElementById('btnStartGame').style.display = 'block';
             }
         });
 
-        document.getElementById('btnStart').addEventListener('click', () => {
+        document.getElementById('btnLocalJoin').addEventListener('click', () => {
+            const readerElement = document.getElementById('reader');
+            readerElement.style.display = 'block';
+            
+            console.log("Initializing camera hardware streams...");
+            html5QrcodeScanner = new Html5QrcodeScanner("reader", { fps: 10, qrbox: 250 });
+            
+            html5QrcodeScanner.render((decodedText) => {
+                console.log(`Optical handshake match: ${decodedText}`);
+                actionJoinRoom(decodedText);
+                html5QrcodeScanner.clear();
+                readerElement.style.display = 'none';
+            }, (error) => {
+                // Silent catch tracking frame updates
+            });
+        });
+
+        // --- MODE 3: ONLINE P2P ACTIONS ---
+        document.getElementById('btnOnlineHost').addEventListener('click', async () => {
+            document.getElementById('btnOnlineHost').disabled = true;
+            await actionCreateRoom();
+            document.getElementById('btnStartGame').style.display = 'block';
+        });
+
+        document.getElementById('btnOnlineJoin').addEventListener('click', () => {
+            const code = document.getElementById('remoteCodeInput').value.trim();
+            if (code) {
+                actionJoinRoom(code);
+                document.getElementById('btnOnlineJoin').disabled = true;
+            }
+        });
+
+        document.getElementById('btnStartGame').addEventListener('click', () => {
             actionStartMatch();
-            document.getElementById('btnStart').style.display = 'none';
+            document.getElementById('btnStartGame').style.display = 'none';
         });
     </script>
 </body>
