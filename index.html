@@ -4,331 +4,147 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Whot P2P - Azabuike Technologies Inc.</title>
-    
-    <script>
-        window.addEventListener('error', function(e) {
-            const errorOverlay = document.getElementById('errorOverlay');
-            if (errorOverlay) {
-                errorOverlay.style.display = 'block';
-                errorOverlay.innerHTML += `<br>⚠️ <b>Error:</b> ${e.message}<br>📂 <b>File:</b> ${e.filename}<br>📍 <b>Line:</b> ${e.lineno}<br>-------------------`;
-            }
-        });
-        window.addEventListener('unhandledrejection', function(e) {
-            const errorOverlay = document.getElementById('errorOverlay');
-            if (errorOverlay) {
-                errorOverlay.style.display = 'block';
-                errorOverlay.innerHTML += `<br>⚠️ <b>Promise Rejected:</b> ${e.reason}<br>-------------------`;
-            }
-        });
-    </script>
+    <style>
+        :root {
+            --bg-main: #0f172a;
+            --surface: #1e293b;
+            --accent: #2563eb;
+            --accent-hover: #1d4ed8;
+            --text-main: #f8fafc;
+            --card-circle: #ef4444;
+            --card-cross: #eab308;
+            --card-triangle: #10b981;
+            --card-star: #a855f7;
+            --card-square: #3b82f6;
+            --card-whot: #f43f5e;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+        body { background: var(--bg-main); color: var(--text-main); min-height: 100vh; padding: 15px; }
+        header { text-align: center; margin-bottom: 25px; padding-bottom: 10px; border-bottom: 1px solid #334155; }
+        header h1 { font-size: 1.8rem; color: #38bdf8; }
+        header span { font-size: 0.85rem; opacity: 0.7; letter-spacing: 1px; }
+
+        .hidden { display: none !important; }
+        .panel { background: var(--surface); border-radius: 12px; padding: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.3); margin-bottom: 20px; }
+        
+        /* Lobby Configuration Styles */
+        .lobby-grid { display: grid; grid-template-columns: 1fr; gap: 20px; max-width: 600px; margin: 0 auto; }
+        button { background: var(--accent); color: white; border: none; padding: 12px 20px; border-radius: 6px; cursor: pointer; font-weight: bold; width: 100%; font-size: 1rem; transition: background 0.2s; }
+        button:hover { background: var(--accent-hover); }
+        .input-group { display: flex; gap: 10px; margin-top: 8px; }
+        input { flex: 1; padding: 10px; border-radius: 6px; border: 1px solid #475569; background: #0f172a; color: white; font-size: 1rem; }
+        #qr-code-container { display: flex; justify-content: center; margin: 15px 0; }
+        #camera-reader-view { width: 100%; max-width: 300px; margin: 10px auto; border-radius: 8px; overflow: hidden; }
+
+        /* Game Arena Layout Matrix */
+        .arena-grid { display: grid; grid-template-rows: auto 1fr auto; gap: 20px; max-width: 1000px; margin: 0 auto; }
+        .hand-container { display: flex; gap: 10px; overflow-x: auto; padding: 10px 0; min-height: 140px; border-radius: 8px; background: rgba(0,0,0,0.2); justify-content: center; align-items: center; }
+        
+        /* Card Aesthetics Generation */
+        .card-face { width: 85px; height: 125px; border-radius: 8px; display: flex; flex-direction: column; justify-content: space-between; padding: 10px; font-weight: bold; font-size: 1.1rem; cursor: pointer; user-select: none; flex-shrink: 0; color: white; position: relative; box-shadow: 0 4px 6px rgba(0,0,0,0.2); }
+        .card-face.playable { border: 3px solid #ffff; transform: translateY(-5px); }
+        .card-face.card-back { background: #475569; border: 2px solid #64748b; justify-content: center; align-items: center; cursor: not-allowed; }
+        
+        .shape-circle { background: var(--card-circle); }
+        .shape-cross { background: var(--card-cross); }
+        .shape-triangle { background: var(--card-triangle); }
+        .shape-star { background: var(--card-star); }
+        .shape-square { background: var(--card-square); }
+        .shape-whot { background: var(--card-whot); animation: pulse 2s infinite; }
+
+        @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(244,63,94,0.7); } 70% { box-shadow: 0 0 0 10px rgba(244,63,94,0); } 100% { box-shadow: 0 0 0 0 rgba(244,63,94,0); } }
+
+        .center-deck-hub { display: flex; justify-content: center; align-items: center; gap: 40px; margin: 20px 0; }
+        .interactive-deck { animation: bounce 1.5s infinite alternate; }
+        @keyframes bounce { from { transform: translateY(0); } to { transform: translateY(-4px); } }
+
+        /* Real-time System Log Console */
+        #log-console { background: #020617; border: 1px solid #1e293b; color: #4ade80; font-family: monospace; font-size: 0.8rem; padding: 10px; border-radius: 6px; height: 100px; overflow-y: auto; margin-top: 20px; }
+        .badge { display: inline-block; padding: 4px 8px; border-radius: 4px; font-size: 0.8rem; font-weight: bold; margin-bottom: 8px; background: #ef4444; color: white; }
+
+        /* Overlay Modals */
+        .modal { position: fixed; top: 0; left: 0; width:100%; height:100%; background:rgba(0,0,0,0.85); display:flex; justify-content:center; align-items:center; z-index:999; }
+        .modal-content { background: var(--surface); padding: 30px; border-radius: 12px; text-align: center; max-width: 400px; width: 90%; }
+        .modal-content h2 { margin-bottom: 15px; color: #38bdf8; }
+    </style>
 
     <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <script src="https://unpkg.com/html5-qrcode"></script>
-
-    <style>
-        :root {
-            --bg-color: #0f172a;
-            --card-bg: #1e293b;
-            --accent-color: #3b82f6;
-            --text-main: #f8fafc;
-            --text-muted: #94a3b8;
-            --success: #22c55e;
-            --danger: #ef4444;
-        }
-
-        body {
-            margin: 0;
-            padding: 0;
-            font-family: system-ui, -apple-system, sans-serif;
-            background-color: var(--bg-color);
-            color: var(--text-main);
-            display: flex;
-            flex-direction: column;
-            min-height: 100vh;
-        }
-
-        header {
-            background-color: rgba(30, 41, 59, 0.7);
-            padding: 1.5rem;
-            text-align: center;
-            border-bottom: 1px solid #334155;
-            backdrop-filter: blur(8px);
-        }
-
-        header h1 {
-            margin: 0;
-            font-size: 1.8rem;
-            letter-spacing: 0.05em;
-        }
-
-        header span {
-            font-size: 0.8rem;
-            color: var(--text-muted);
-            text-transform: uppercase;
-            letter-spacing: 0.15em;
-        }
-
-        main {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            padding: 1.5rem;
-            gap: 1.5rem;
-        }
-
-        /* Diagnostic Error Terminal Overlay */
-        .error-overlay {
-            width: 100%;
-            max-width: 440px;
-            background-color: #450a0a;
-            border: 2px solid var(--danger);
-            color: #fca5a5;
-            padding: 1rem;
-            border-radius: 8px;
-            font-family: monospace;
-            font-size: 0.85rem;
-            margin-bottom: 1rem;
-            display: none;
-            box-sizing: border-box;
-            text-align: left;
-        }
-
-        .lobby-panel {
-            background-color: var(--card-bg);
-            padding: 2rem;
-            border-radius: 12px;
-            border: 1px solid #334155;
-            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
-            max-width: 440px;
-            width: 100%;
-            text-align: center;
-            box-sizing: border-box;
-        }
-
-        .mode-section {
-            background: rgba(15, 23, 42, 0.4);
-            padding: 1.25rem;
-            border-radius: 8px;
-            margin-bottom: 1rem;
-            border: 1px solid #1e293b;
-            text-align: left;
-        }
-
-        .mode-section h4 {
-            margin: 0 0 0.5rem 0;
-            color: var(--text-main);
-            font-size: 1.05rem;
-        }
-
-        .mode-section p {
-            margin: 0 0 1rem 0;
-            font-size: 0.85rem;
-            color: var(--text-muted);
-            line-height: 1.4;
-        }
-
-        .input-group {
-            display: flex;
-            gap: 0.5rem;
-            margin-top: 0.5rem;
-        }
-
-        input {
-            background-color: var(--bg-color);
-            border: 1px solid #475569;
-            padding: 0.6rem;
-            border-radius: 6px;
-            color: var(--text-main);
-            font-size: 0.9rem;
-            flex: 1;
-        }
-
-        button {
-            background-color: var(--accent-color);
-            color: white;
-            border: none;
-            padding: 0.75rem 1.25rem;
-            font-size: 0.95rem;
-            font-weight: 600;
-            border-radius: 6px;
-            cursor: pointer;
-            transition: background 0.2s ease;
-        }
-
-        button:hover {
-            background-color: #2563eb;
-        }
-
-        button.secondary {
-            background-color: transparent;
-            border: 1px solid #475569;
-            color: var(--text-main);
-        }
-
-        button.w-full {
-            width: 100%;
-        }
-
-        #qrcode {
-            display: flex;
-            justify-content: center;
-            margin: 1rem 0;
-            background: white;
-            padding: 1rem;
-            border-radius: 8px;
-            display: none;
-        }
-
-        #reader {
-            width: 100%;
-            background: black;
-            border-radius: 8px;
-            overflow: hidden;
-            display: none;
-            margin-top: 0.5rem;
-        }
-
-        .terminal-log {
-            width: 100%;
-            max-width: 600px;
-            background-color: #020617;
-            border: 1px solid #1e293b;
-            font-family: monospace;
-            padding: 1rem;
-            border-radius: 8px;
-            font-size: 0.85rem;
-            color: var(--success);
-            height: 140px;
-            overflow-y: auto;
-            box-sizing: border-box;
-        }
-    </style>
 </head>
 <body>
 
     <header>
-        <h1>WHOT P2P</h1>
-        <span>Azabuike Technologies Inc.</span>
+        <h1>Whot P2P</h1>
+        <span>AZABUIKE TECHNOLOGIES INC.</span>
     </header>
 
-    <main>
-        <div class="error-overlay" id="errorOverlay">
-            <b>🔴 CRITICAL RUNTIME LOG ENCOUNTERED:</b>
-        </div>
+    <main id="lobby-screen" class="lobby-grid">
+        <section class="panel">
+            <h3>1. Sandbox Environment</h3>
+            <p style="font-size:0.85rem; opacity:0.7; margin-bottom:12px;">Zero network dependencies latency-free play.</p>
+            <button id="btn-vs-computer">vs Computer (Offline)</button>
+        </section>
 
-        <div class="lobby-panel" id="lobbyUi">
-            <h3 style="margin-top:0;">Select Match Architecture</h3>
-            
-            <div class="mode-section">
-                <h4>Single Player Mode</h4>
-                <p>Instant matchmaking scenario directly matching you against our deterministic, local heuristic AI engine.</p>
-                <button id="btnPlayAI" class="w-full" style="background-color: #6366f1;">Play vs Computer</button>
+        <section class="panel">
+            <h3>2. Proximity Pairing (Host Room)</h3>
+            <button id="btn-host-local" style="background:#059669; margin-bottom:8px;">Host Local Match (QR Generate)</button>
+            <button id="btn-host-p2p" style="background:#4f46e5;">Host Remote Match (Code Only)</button>
+            <div id="host-id-display" style="margin-top:10px; text-align:center; font-weight:bold; color:#38bdf8;"></div>
+            <div id="qr-code-container"></div>
+        </section>
+
+        <section class="panel">
+            <h3>3. Remote Entry (Join Room)</h3>
+            <div class="input-group">
+                <input type="text" id="room-id-input" placeholder="Paste Room Code Signature">
+                <button id="btn-join-remote" style="width:auto;">Join</button>
             </div>
-
-            <div class="mode-section">
-                <h4>Local P2P (Nearby)</h4>
-                <p>Connect instantly with a player right next to you via swift optical QR authentication codes.</p>
-                <div style="display: flex; gap: 0.5rem;">
-                    <button id="btnLocalHost" style="flex:1;">Show QR</button>
-                    <button id="btnLocalJoin" class="secondary" style="flex:1;">Scan QR</button>
-                </div>
-                <div id="qrcode"></div>
-                <div id="reader"></div>
-            </div>
-
-            <div class="mode-section">
-                <h4>Online P2P (Remote)</h4>
-                <p>Generate a unique peer transmission code to link across the network with players out of range.</p>
-                <button id="btnOnlineHost" class="w-full secondary" style="margin-bottom:0.5rem;">Host Remote Room</button>
-                <div class="input-group">
-                    <input type="text" id="remoteCodeInput" placeholder="Paste Remote Room ID">
-                    <button id="btnOnlineJoin">Join</button>
-                </div>
-            </div>
-
-            <button id="btnStartGame" style="display: none; background-color: var(--success); width:100%; margin-top:1rem; padding:1rem; font-size:1.1rem;">
-                Launch Match Matrix
-            </button>
-        </div>
-
-        <div class="terminal-log" id="terminalLog">
-            [System Engine Initialized] Multi-Option Infrastructure Status: Online. Ready for deployment...
-        </div>
+            <button id="camera-scan-btn" style="margin-top:10px; background:#7c3aed;">Scan QR Code via Camera</button>
+            <div id="camera-reader-view" class="hidden"></div>
+        </section>
     </main>
 
-    <script type="module">
-        import { actionCreateRoom, actionJoinRoom, actionStartMatch, setupLocalAIMatch } from './src/app.js';
+    <main id="game-screen" class="arena-grid hidden">
+        <div id="turn-indicator" style="text-align:center; font-weight:bold; color:#38bdf8;">Turn Engine Waiting...</div>
+        
+        <section>
+            <h4 style="margin-bottom:5px;">Opponent Stack</h4>
+            <div id="opponent-hand" class="hand-container"></div>
+        </section>
 
-        const logger = document.getElementById('terminalLog');
-        let html5QrcodeScanner = null;
+        <section class="center-deck-hub">
+            <div>
+                <p style="font-size:0.8rem; text-align:center; margin-bottom:4px;">Market Pile</p>
+                <div id="market-deck" class="card-face card-back interactive-deck">
+                    <div>🗂️</div>
+                </div>
+            </div>
+            <div>
+                <p style="font-size:0.8rem; text-align:center; margin-bottom:4px;">Open Card</p>
+                <div id="discard-pile" class="card-face"></div>
+                <div id="active-demand-indicator" class="badge hidden" style="margin-top:8px;"></div>
+            </div>
+        </section>
 
-        function logToTerminal(msg, isWarn = false) {
-            const color = isWarn ? 'color: #eab308;' : '';
-            logger.innerHTML += `<br><span style="${color}">> ${msg}</span>`;
-            logger.scrollTop = logger.scrollHeight;
-        }
+        <section>
+            <h4 style="margin-bottom:5px;">Your Hand (Tap to Play)</h4>
+            <div id="player-hand" class="hand-container"></div>
+        </section>
 
-        console.log = (msg) => logToTerminal(typeof msg === 'object' ? JSON.stringify(msg) : msg);
-        console.warn = (msg) => logToTerminal(msg, true);
+        <footer id="log-console">
+            <div>[System] Ready to load modules...</div>
+        </footer>
+    </main>
 
-        // --- MODE 1 ---
-        document.getElementById('btnPlayAI').addEventListener('click', () => {
-            setupLocalAIMatch();
-            document.getElementById('btnPlayAI').style.display = 'none';
-        });
+    <div id="winner-modal" class="modal hidden">
+        <div class="modal-content">
+            <h2 id="winner-text">Match Concluded</h2>
+            <button id="btn-restart">Return to Main Lobby</button>
+        </div>
+    </div>
 
-        // --- MODE 2 ---
-        document.getElementById('btnLocalHost').addEventListener('click', async () => {
-            document.getElementById('btnLocalHost').disabled = true;
-            await actionCreateRoom();
-            
-            const code = document.getElementById('remoteCodeInput').value || window.currentRoomId;
-            if (code) {
-                document.getElementById('qrcode').style.display = 'block';
-                document.getElementById('qrcode').innerHTML = "";
-                new QRCode(document.getElementById("qrcode"), {
-                    text: code,
-                    width: 180,
-                    height: 180
-                });
-                document.getElementById('btnStartGame').style.display = 'block';
-            }
-        });
-
-        document.getElementById('btnLocalJoin').addEventListener('click', () => {
-            const readerElement = document.getElementById('reader');
-            readerElement.style.display = 'block';
-            
-            html5QrcodeScanner = new Html5QrcodeScanner("reader", { fps: 10, qrbox: 250 });
-            html5QrcodeScanner.render((decodedText) => {
-                actionJoinRoom(decodedText);
-                html5QrcodeScanner.clear();
-                readerElement.style.display = 'none';
-            });
-        });
-
-        // --- MODE 3 ---
-        document.getElementById('btnOnlineHost').addEventListener('click', async () => {
-            document.getElementById('btnOnlineHost').disabled = true;
-            await actionCreateRoom();
-            document.getElementById('btnStartGame').style.display = 'block';
-        });
-
-        document.getElementById('btnOnlineJoin').addEventListener('click', () => {
-            const code = document.getElementById('remoteCodeInput').value.trim();
-            if (code) {
-                actionJoinRoom(code);
-                document.getElementById('btnOnlineJoin').disabled = true;
-            }
-        });
-
-        document.getElementById('btnStartGame').addEventListener('click', () => {
-            actionStartMatch();
-            document.getElementById('btnStartGame').style.display = 'none';
-        });
-    </script>
+    <script type="module" src="src/app.js"></script>
 </body>
 </html>
