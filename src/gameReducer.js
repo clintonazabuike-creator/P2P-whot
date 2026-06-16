@@ -1,113 +1,153 @@
-import { isValidMove, getCardEffects } from './rulesEngine.js';
-import { SHAPES } from './gameState.js';
-
 /**
- * ARCHITECTURE NOTE:
- * The action processor receives an action payload, safely updates the state object,
- * and ensures that game rules are mechanically applied.
+ * Whot P2P by Azabuike Technologies Inc.
+ * File: src/gameReducer.js
+ * Purpose: Central action handler processing deep state modifications cleanly.
  */
 
-export function handleGameAction(state, action) {
-    // Clone state to prevent unpredictable reference mutations during processing
-    const updatedState = JSON.parse(JSON.stringify(state));
-    
-    if (updatedState.turn.gameStatus !== 'PLAYING') return updatedState;
+import { ACTIONS, createDeck, shuffle, deepCloneState, SHAPES } from './gameState.js';
+import { RulesEngine } from './rulesEngine.js';
+
+export function gameReducer(state, action) {
+    const newState = deepCloneState(state);
 
     switch (action.type) {
-        case 'PLAY_CARD':
-            return processPlayCard(updatedState, action.payload);
+        case ACTIONS.START_GAME: {
+            let deck = shuffle(createDeck());
+            
+            // Deal 6 cards to each player
+            newState.players.forEach(player => {
+                player.hand = deck.splice(0, 6);
+                player.score = 0;
+            });
 
-        case 'DRAW_CARD':
-            return processDrawCard(updatedState, action.payload);
+            // Flip top card, ensuring it's not a Whot (20) card for starter simplicity
+            let topCardIdx = deck.findIndex(c => c.shape !== SHAPES.WHOT);
+            if (topCardIdx === -1) topCardIdx = 0;
+            const [topCard] = deck.splice(topCardIdx, 1);
+
+            newState.discardPile = [topCard];
+            newState.deck = deck;
+            newState.currentTurnIdx = 0;
+            newState.activeDemandShape = null;
+            newState.turnPenaltyStack = 0;
+            newState.winnerId = null;
+            newState.gameLog = ["Match started! Deck shuffled and dealt."];
+            return newState;
+        }
+
+        case ACTIONS.PLAY_CARD: {
+            const { playerId, cardId, chosenDemandShape } = action.payload;
+            const playerIdx = newState.players.findIndex(p => p.id === playerId);
+            
+            if (playerIdx !== newState.currentTurnIdx) return state; // Block out-of-turn plays
+            
+            const player = newState.players[playerIdx];
+            const cardIdx = player.hand.findIndex(c => c.id === cardId);
+            if (cardIdx === -1) return state;
+
+            const card = player.hand[cardIdx];
+            const topCard = newState.discardPile[newState.discardPile.length - 1];
+
+            // Validate with referee
+            if (!RulesEngine.isCardPlayable(card, topCard, newState.activeDemandShape, newState.turnPenaltyStack)) {
+                return state; 
+            }
+
+            // Remove card from hand, place on top of discard pile
+            player.hand.splice(cardIdx, 1);
+            newState.discardPile.push(card);
+
+            // Clean active shape demands unless reset by another demand
+            newState.activeDemandShape = null;
+
+            // Evaluate special card rules
+            const effects = RulesEngine.evaluateCardEffects(card);
+            
+            if (effects.requiresDemand) {
+                newState.activeDemandShape = chosenDemandShape || SHAPES.CIRCLE; // Default safe fall-back
+                newState.gameLog.unshift(`${player.name} played WHOT! Demanded: ${newState.activeDemandShape}`);
+            } else {
+                newState.gameLog.unshift(`${player.name} played ${card.shape} ${card.value}`);
+            }
+
+            // Apply card stacks
+            if (effects.penaltyCardsToDraw > 0) {
+                newState.turnPenaltyStack += effects.penaltyCardsToDraw;
+            }
+
+            // Win condition check
+            if (player.hand.length === 0) {
+                newState.winnerId = player.id;
+                newState.gameLog.unshift(`🎉 ${player.name} has won the match!`);
+                return newState;
+            }
+
+            // Calculate next turn rotation
+            if (effects.holdOn) {
+                newState.gameLog.unshift(`${player.name} holds on to play again.`);
+                // Turn index remains unchanged
+            } else if (effects.suspension) {
+                newState.gameLog.unshift(`Next player suspended!`);
+                // Skips next player in 2-player mode (meaning it wraps right back to current player)
+            } else {
+                // Shift turn normally
+                newState.currentTurnIdx = (newState.currentTurnIdx + 1) % newState.players.length;
+            }
+
+            return newState;
+        }
+
+        case ACTIONS.DRAW_CARD: {
+            const { playerId } = action.payload;
+            const playerIdx = newState.players.findIndex(p => p.id === playerId);
+            if (playerIdx !== newState.currentTurnIdx) return state;
+
+            const player = newState.players[playerIdx];
+            
+            // Re-shuffle discard pile back into deck if deck is empty
+            if (newState.deck.length === 0) {
+                const topCard = newState.discardPile.pop();
+                newState.deck = shuffle(newState.discardPile);
+                newState.discardPile = [topCard];
+                newState.gameLog.unshift("Market refilled from discard pile.");
+            }
+
+            // Determine if pulling penalties or pulling single market share
+            const cardsToDrawCount = newState.turnPenaltyStack > 0 ? newState.turnPenaltyStack : 1;
+            newState.gameLog.unshift(`${player.name} draws ${cardsToDrawCount} card(s) from Market.`);
+
+            for (let i = 0; i < cardsToDrawCount; i++) {
+                if (newState.deck.length > 0) {
+                    player.hand.push(newState.deck.shift());
+                }
+            }
+
+            // Reset penalty stack
+            newState.turnPenaltyStack = 0;
+
+            // Drawing shifts turn unless a penalty loop was cleared (standard regional variant yields turn after drawing market)
+            newState.currentTurnIdx = (newState.currentTurnIdx + 1) % newState.players.length;
+
+            return newState;
+        }
+
+        case ACTIONS.SYNC_STATE: {
+            return action.payload.state;
+        }
+
+        case ACTIONS.PLAYER_DISCONNECTED: {
+            const { playerId } = action.payload;
+            const targetPlayer = newState.players.find(p => p.id === playerId);
+            if (targetPlayer) {
+                targetPlayer.isBot = true;
+                targetPlayer.name += " (AI Autopilot)";
+                newState.gameLog.unshift(`⚠️ Connection dropped. AI took over ${targetPlayer.name}.`);
+            }
+            return newState;
+        }
 
         default:
-            return updatedState;
+            return state;
     }
 }
-
-// --- Internal Processing Sub-routines ---
-
-function processPlayCard(state, { playerKey, cardId, suitSelection }) {
-    const player = state.players[playerKey];
-    
-    // 1. Enforce turn isolation
-    if (state.turn.currentTurn !== playerKey) return state;
-
-    const cardIndex = player.hand.findIndex(c => c.id === cardId);
-    if (cardIndex === -1) return state; // Card not found in hand
-
-    const cardToPlay = player.hand[cardIndex];
-    const topCard = state.discardPile[state.discardPile.length - 1];
-
-    // 2. Validate move safety
-    if (!isValidMove(cardToPlay, topCard, state.turn.activeSuit)) return state;
-
-    // 3. Check for active penalties: If a player owes cards, they CANNOT play normal cards
-    // They must either stack another penalty card (e.g., play a 2 on a 2) or draw.
-    if (state.turn.cardsToDraw > 0) {
-        const isStackingPenalty = (topCard.number === 2 && cardToPlay.number === 2) || 
-                                  (topCard.number === 14 && cardToPlay.number === 14);
-        if (!isStackingPenalty) return state; // Block the move if it doesn't defend
-    }
-
-    // 4. Move card from hand to discard pile
-    player.hand.splice(cardIndex, 1);
-    state.discardPile.push(cardToPlay);
-
-    // 5. Evaluate card side effects
-    const effects = getCardEffects(cardToPlay);
-
-    // Reset active suit unless a new Whot card is redefining it
-    state.turn.activeSuit = effects.mustChangeSuit ? suitSelection : null;
-
-    // Manage penalty stacks (e.g., if a Pick 2 is played on an existing Pick 2)
-    if (effects.penaltyCards > 0) {
-        state.turn.cardsToDraw += effects.penaltyCards;
-    }
-
-    // 6. Check Win Condition (Game Over)
-    if (player.hand.length === 0) {
-        state.turn.gameStatus = 'GAME_OVER';
-        return state;
-    }
-
-    // 7. Advance Turn Cycle
-    if (effects.shouldSwitchTurn) {
-        // Toggle turn between 'host' and 'client'
-        state.turn.currentTurn = state.turn.currentTurn === 'host' ? 'client' : 'host';
-    }
-
-    return state;
-}
-
-function processDrawCard(state, { playerKey }) {
-    const player = state.players[playerKey];
-    
-    if (state.turn.currentTurn !== playerKey) return state;
-
-    // Fallback: If deck runs low, flip the discard pile over to recycle it
-    if (state.deck.length === 0) {
-        const topCard = state.discardPile.pop();
-        state.deck = state.discardPile.reverse(); // Recycle
-        state.discardPile = [topCard];
-    }
-
-    // Calculate how many cards must be drawn
-    // If cardsToDraw > 0, the player was forced into market by a penalty card
-    const count = state.turn.cardsToDraw > 0 ? state.turn.cardsToDraw : 1;
-
-    for (let i = 0; i < count; i++) {
-        if (state.deck.length > 0) {
-            player.hand.push(state.deck.pop());
-        }
-    }
-
-    // Reset the penalty accumulator since they have paid their market fine
-    state.turn.cardsToDraw = 0;
-
-    // Advancing turn after drawing from market
-    state.turn.currentTurn = state.turn.currentTurn === 'host' ? 'client' : 'host';
-
-    return state;
-    }
 
