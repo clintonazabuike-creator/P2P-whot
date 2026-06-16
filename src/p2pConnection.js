@@ -1,100 +1,111 @@
 /**
- * ARCHITECTURE NOTE:
- * This module manages low-latency P2P data synchronization over WebRTC via PeerJS.
- * It broadcasts atomic action payloads to ensure both clients mirror the exact same state.
+ * Whot P2P by Azabuike Technologies Inc.
+ * File: src/p2pConnection.js
+ * Purpose: WebRTC network lifecycle mesh management using PeerJS.
  */
 
-let peerInstance = null;
-let activeConnection = null;
+export class P2PConnectionManager {
+    constructor(onMessageCallback, onDisconnectCallback) {
+        this.peer = null;
+        this.connection = null;
+        this.onMessageCallback = onMessageCallback;
+        this.onDisconnectCallback = onDisconnectCallback;
+        this.isHost = false;
+    }
 
-/**
- * Initializes a PeerJS instance for the Host and sets up connection listeners.
- * @param {Function} onStateUpdateCallback - Triggered when a validated remote action is received.
- * @param {Function} onDisconnectCallback - Triggered if the connection drops (triggers AI Takeover).
- * @returns {Promise<String>} - Resolves with the unique Room/Peer ID.
- */
-export function initializeHost(onStateUpdateCallback, onDisconnectCallback) {
-    return new Promise((resolve, reject) => {
-        // Initialize PeerJS. Uses public cloud signaling for initial handshake discovery only.
-        peerInstance = new Peer();
+    /**
+     * Instantiates a PeerJS instance and returns a unique local ID
+     */
+    initializePeer(customId = null) {
+        return new Promise((resolve, reject) => {
+            // Using standard public cloud PeerJS infrastructure
+            this.peer = customId ? new Peer(customId) : new Peer();
 
-        peerInstance.on('open', (id) => {
-            resolve(id); // This ID becomes the Room Code shared with the client
+            this.peer.on('open', (id) => {
+                resolve(id);
+            });
+
+            this.peer.on('connection', (conn) => {
+                if (!this.isHost) {
+                    // Host mode auto-accepts incoming connections
+                    this.isHost = true;
+                    this.connection = conn;
+                    this.setupConnectionListeners();
+                } else {
+                    // Deny multiple connections to ensure a rigid 1v1 match
+                    conn.on('open', () => {
+                        conn.send({ type: 'SYSTEM_ERROR', payload: 'Room Full' });
+                        conn.close();
+                    });
+                }
+            });
+
+            this.peer.on('error', (err) => {
+                console.error("PeerJS Core Error:", err);
+                reject(err);
+            });
         });
+    }
 
-        peerInstance.on('connection', (conn) => {
-            activeConnection = conn;
-            setupDataChannelListeners(onStateUpdateCallback, onDisconnectCallback);
+    /**
+     * Connects a visitor to a target room host ID
+     */
+    connectToPeer(targetPeerId) {
+        return new Promise((resolve, reject) => {
+            if (!this.peer) return reject("Local node uninitialized.");
+
+            this.isHost = false;
+            this.connection = this.peer.connect(targetPeerId, { reliable: true });
+
+            this.connection.on('open', () => {
+                this.setupConnectionListeners();
+                resolve(this.connection);
+            });
+
+            this.connection.on('error', (err) => {
+                reject(err);
+            });
         });
+    }
 
-        peerInstance.on('error', (err) => {
-            reject(err);
-        });
-    });
-}
-
-/**
- * Connects a Guest/Client to an existing Host's Room ID.
- * @param {String} hostRoomId - The Room ID provided by the host.
- * @param {Function} onStateUpdateCallback - Triggered when a validated remote action is received.
- * @param {Function} onDisconnectCallback - Triggered if the host drops.
- */
-export function connectToRoom(hostRoomId, onStateUpdateCallback, onDisconnectCallback) {
-    peerInstance = new Peer();
-
-    peerInstance.on('open', () => {
-        activeConnection = peerInstance.connect(hostRoomId, {
-            reliable: true // Enforces TCP-like delivery confirmation for structural card actions
-        });
-
-        setupDataChannelListeners(onStateUpdateCallback, onDisconnectCallback);
-    });
-}
-
-/**
- * Internal helper to bind state synchronization events onto the active WebRTC channel.
- */
-function setupDataChannelListeners(onStateUpdate, onDisconnect) {
-    if (!activeConnection) return;
-
-    activeConnection.on('open', () => {
-        console.log("P2P Data Channel Securely Established.");
-    });
-
-    activeConnection.on('data', (data) => {
-        try {
-            // De-serialize incoming action payloads from across the network
-            const action = typeof data === 'string' ? JSON.parse(data) : data;
-            
-            if (action && action.type) {
-                onStateUpdate(action);
+    /**
+     * Attaches data stream and termination listeners to active connections
+     */
+    setupConnectionListeners() {
+        this.connection.on('data', (data) => {
+            if (this.onMessageCallback) {
+                this.onMessageCallback(data);
             }
-        } catch (error) {
-            console.error("Malformed state transmission dropped:", error);
+        });
+
+        this.connection.on('close', () => {
+            if (this.onDisconnectCallback) {
+                this.onDisconnectCallback();
+            }
+        });
+
+        this.connection.on('error', (err) => {
+            console.error("Data Stream Error:", err);
+        });
+    }
+
+    /**
+     * Dispatches transactional JSON payloads across the network
+     */
+    broadcast(actionPayload) {
+        if (this.connection && this.connection.open) {
+            this.connection.send(actionPayload);
+        } else {
+            console.warn("Broadcast dropped: No active connection stream.");
         }
-    });
+    }
 
-    activeConnection.on('close', () => {
-        console.warn("Direct P2P link severed.");
-        onDisconnect();
-    });
-
-    activeConnection.on('error', (err) => {
-        console.error("P2P Channel Error:", err);
-        onDisconnect();
-    });
-}
-
-/**
- * Broadcasts an atomic game action across the direct peer-to-peer data connection.
- * @param {Object} action - The action object (e.g., { type: 'PLAY_CARD', payload: {...} })
- */
-export function broadcastGameAction(action) {
-    if (activeConnection && activeConnection.open) {
-        // Send the action payload directly into the WebRTC data channel buffer
-        activeConnection.send(JSON.stringify(action));
-    } else {
-        console.error("Transmission failed: P2P data connection is offline.");
+    /**
+     * Gracefully tears down the connection node
+     */
+    disconnect() {
+        if (this.connection) this.connection.close();
+        if (this.peer) this.peer.destroy();
     }
 }
 
